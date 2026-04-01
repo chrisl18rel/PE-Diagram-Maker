@@ -97,6 +97,24 @@
     }
     input[type="number"]:focus, input[type="text"]:focus { outline: none; border-color: var(--gold); }
 
+    /* Color picker rows */
+    .color-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 0.74rem; color: var(--text-dim);
+    }
+    input[type="color"] {
+      -webkit-appearance: none;
+      width: 32px; height: 22px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+      padding: 1px;
+      flex-shrink: 0;
+    }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: none; border-radius: 3px; }
+
     .tog-list { display: flex; flex-direction: column; gap: 8px; }
     .tog {
       display: flex; align-items: center; gap: 8px;
@@ -244,6 +262,18 @@
       </div>
     </div>
 
+    <!-- Colors -->
+    <div>
+      <div class="sec-title">Colors</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:8px">
+        <div class="color-row"><span>Graph line</span>       <input type="color" id="colorCurve"  value="#111111"></div>
+        <div class="color-row"><span>All labels</span>       <input type="color" id="colorLabels" value="#111111"></div>
+        <div class="color-row"><span>E<sub>a</sub> forward</span> <input type="color" id="colorEaFwd" value="#2172b8"></div>
+        <div class="color-row"><span>E<sub>a</sub> reverse</span> <input type="color" id="colorEaRev" value="#7d3ca8"></div>
+        <div class="color-row"><span>ΔH</span>               <input type="color" id="colorDH"     value="#1e8c4e"></div>
+      </div>
+    </div>
+
     <!-- Show / Hide -->
     <div>
       <div class="sec-title">Show / Hide</div>
@@ -254,15 +284,15 @@
         </label>
         <label class="tog">
           <input type="checkbox" id="showEaFwd" checked>
-          <span class="dot" style="background:var(--blue)"></span>E<sub>a</sub> forward arrow
+          <span class="dot" id="dotEaFwd" style="background:#2172b8"></span>E<sub>a</sub> forward arrow
         </label>
         <label class="tog">
           <input type="checkbox" id="showEaRev" checked>
-          <span class="dot" style="background:var(--purple)"></span>E<sub>a</sub> reverse arrow
+          <span class="dot" id="dotEaRev" style="background:#7d3ca8"></span>E<sub>a</sub> reverse arrow
         </label>
         <label class="tog">
           <input type="checkbox" id="showDH" checked>
-          <span class="dot" style="background:var(--green)"></span>ΔH arrow
+          <span class="dot" id="dotDH" style="background:#1e8c4e"></span>ΔH arrow
         </label>
         <!-- FIX #1: toggle for kJ values on arrows -->
         <label class="tog">
@@ -300,12 +330,16 @@
     increment: 50,
     fontSize: 13,
     reactantLabel: 'X+Y', productLabel: 'Z', complexLabel: '',
-    // FIX #2: editable arrow labels
     eaFwdLabel: 'Ea (fwd)', eaRevLabel: 'Ea (rev)', dhLabel: '\u0394H',
     showRefLines: true, showEaFwd: true, showEaRev: true,
     showDH: true,
-    showArrowValues: true,   // FIX #1
-    showAxisLabels: true
+    showArrowValues: true,
+    showAxisLabels: true,
+    colorCurve:  '#111111',
+    colorLabels: '#111111',
+    colorEaFwd:  '#2172b8',
+    colorEaRev:  '#7d3ca8',
+    colorDH:     '#1e8c4e'
   };
 
   // Layout constants
@@ -402,7 +436,7 @@
     // Fall (bezier): cx(0.50) → cx(0.75)
     // Flat product: cx(0.75) → cx(1.0)
     ctx.save();
-    ctx.strokeStyle = '#111';
+    ctx.strokeStyle = S.colorCurve;
     ctx.lineWidth = 3;
     ctx.lineJoin = ctx.lineCap = 'round';
     ctx.beginPath();
@@ -416,7 +450,7 @@
 
     // Y axis
     ctx.save();
-    ctx.strokeStyle = ctx.fillStyle = '#111';
+    ctx.strokeStyle = ctx.fillStyle = S.colorLabels;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(ML, CH - MB); ctx.lineTo(ML, MT - 20);
@@ -437,11 +471,11 @@
 
     // Y-axis ticks + labels
     ctx.save();
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = S.colorLabels;
     ctx.lineWidth = 1;
     ctx.font = fs + 'px DM Sans, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#222';
+    ctx.fillStyle = S.colorLabels;
     var inc = Math.max(S.increment, 1);
     for (var v = 0; v <= top; v += inc) {
       var yv = cy(v);
@@ -457,7 +491,7 @@
 
     // Axis title — Y
     ctx.save();
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = S.colorLabels;
     ctx.font = 'bold ' + (fs + 0.5) + 'px DM Sans, sans-serif';
     ctx.textAlign = 'center';
     ctx.translate(18, CH / 2 - MB / 4);
@@ -467,7 +501,7 @@
 
     // Axis title — X
     ctx.save();
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = S.colorLabels;
     ctx.font = 'bold ' + (fs + 0.5) + 'px DM Sans, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('Reaction Coordinate', ML + PW / 2, CH - 10);
@@ -533,11 +567,11 @@
 
     ctx.save();
     ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
-    ctx.fillStyle = '#111';
+    ctx.fillStyle = S.colorLabels;
     ctx.textAlign = 'center';
 
     ctx.fillText(S.reactantLabel, rxX, yr - 11);
-    singleDown(rxX, yr - 9, yr - 1, '#111');
+    singleDown(rxX, yr - 9, yr - 1, S.colorLabels);
 
     ctx.fillText(S.productLabel, prodX, yp - 14);
 
@@ -552,9 +586,9 @@
     // Ea Forward
     if (S.showEaFwd) {
       var midF = (yr + yc) / 2;
-      doubleArrow(axF, yr, yc, '#2172b8');
+      doubleArrow(axF, yr, yc, S.colorEaFwd);
       ctx.save();
-      ctx.fillStyle = '#2172b8';
+      ctx.fillStyle = S.colorEaFwd;
       ctx.textAlign = 'left';
       ctx.font = fs + 'px DM Sans, sans-serif';
       ctx.fillText(S.eaFwdLabel, axF + pad, midF - fs * 0.4);
@@ -568,9 +602,9 @@
     // Ea Reverse
     if (S.showEaRev) {
       var midR = (yp + yc) / 2;
-      doubleArrow(axR, yp, yc, '#7d3ca8');
+      doubleArrow(axR, yp, yc, S.colorEaRev);
       ctx.save();
-      ctx.fillStyle = '#7d3ca8';
+      ctx.fillStyle = S.colorEaRev;
       ctx.textAlign = 'left';
       ctx.font = fs + 'px DM Sans, sans-serif';
       ctx.fillText(S.eaRevLabel, axR + pad, midR - fs * 0.4);
@@ -584,9 +618,9 @@
     // ΔH
     if (S.showDH && Math.abs(yr - yp) > 18) {
       var midH = (yr + yp) / 2;
-      doubleArrow(axH, yr, yp, '#1e8c4e');
+      doubleArrow(axH, yr, yp, S.colorDH);
       ctx.save();
-      ctx.fillStyle = '#1e8c4e';
+      ctx.fillStyle = S.colorDH;
       ctx.textAlign = 'right';
       ctx.font = fs + 'px DM Sans, sans-serif';
       ctx.fillText(S.dhLabel, axH - pad, midH - fs * 0.4);
@@ -649,6 +683,17 @@
   document.getElementById('eaFwdLabel').addEventListener('input',   function(e) { S.eaFwdLabel    = e.target.value; draw(); });
   document.getElementById('eaRevLabel').addEventListener('input',   function(e) { S.eaRevLabel    = e.target.value; draw(); });
   document.getElementById('dhLabel').addEventListener('input',      function(e) { S.dhLabel       = e.target.value; draw(); });
+
+  // Color pickers — also keep the Show/Hide dots in sync
+  ['colorCurve','colorLabels','colorEaFwd','colorEaRev','colorDH'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function(e) {
+      S[id] = e.target.value;
+      if (id === 'colorEaFwd') document.getElementById('dotEaFwd').style.background = e.target.value;
+      if (id === 'colorEaRev') document.getElementById('dotEaRev').style.background = e.target.value;
+      if (id === 'colorDH')    document.getElementById('dotDH').style.background    = e.target.value;
+      draw();
+    });
+  });
 
   // Checkboxes
   ['showRefLines','showEaFwd','showEaRev','showDH','showArrowValues','showAxisLabels'].forEach(function(id) {
