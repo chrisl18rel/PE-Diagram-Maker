@@ -1,0 +1,704 @@
+<!-- potential-energy-diagram.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Potential Energy Diagram Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy:       #0c1a28;
+      --navy-mid:   #12253a;
+      --navy-lt:    #1c3450;
+      --gold:       #c9a03e;
+      --gold-lt:    #e4bd62;
+      --text:       #d8e8f2;
+      --text-dim:   #6e90a8;
+      --border:     #1f3a55;
+      --blue:       #2d86c8;
+      --purple:     #8e44ad;
+      --green:      #27ae60;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 13px 26px;
+      background: var(--navy-mid);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      color: var(--gold);
+      letter-spacing: 0.02em;
+    }
+    .hint { font-size: 0.72rem; color: var(--text-dim); font-style: italic; }
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    .panel {
+      width: 280px;
+      min-width: 280px;
+      background: var(--navy-mid);
+      border-right: 1px solid var(--border);
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+    .sec-title {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--gold);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      margin-bottom: 2px;
+    }
+    .ctrl { display: flex; flex-direction: column; gap: 5px; }
+    .ctrl > label { font-size: 0.74rem; color: var(--text-dim); }
+    .ctrl-row { display: flex; align-items: center; gap: 8px; }
+
+    /* FIX #7: wider number inputs so spinners don't crowd the value */
+    input[type="range"] { flex: 1; accent-color: var(--gold); cursor: pointer; height: 3px; }
+    input[type="number"] {
+      background: var(--navy-lt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      padding: 4px 4px 4px 7px;
+      width: 80px;
+      text-align: left;
+    }
+    input[type="text"] {
+      background: var(--navy-lt);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      padding: 4px 7px;
+      width: 100%;
+    }
+    input[type="number"]:focus, input[type="text"]:focus { outline: none; border-color: var(--gold); }
+
+    .tog-list { display: flex; flex-direction: column; gap: 8px; }
+    .tog {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.76rem; color: var(--text-dim);
+      cursor: pointer; user-select: none;
+    }
+    .tog input[type="checkbox"] { accent-color: var(--gold); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+    .summary {
+      background: var(--navy-lt);
+      border-radius: 6px;
+      padding: 11px 13px;
+      font-size: 0.76rem;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .s-row { display: flex; justify-content: space-between; align-items: center; }
+    .s-lbl { color: var(--text-dim); }
+    .s-val { font-weight: 500; }
+    .s-neg { color: #6fcf97; }
+    .s-pos { color: #eb5757; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 0.68rem; font-weight: 500; letter-spacing: 0.04em; }
+    .b-exo  { background: rgba(111,207,151,.15); color: #6fcf97; border: 1px solid rgba(111,207,151,.3); }
+    .b-endo { background: rgba(235, 87, 87,.15); color: #eb5757; border: 1px solid rgba(235, 87, 87,.3); }
+    .b-neut { background: rgba(100,180,255,.15); color: #64b4ff; border: 1px solid rgba(100,180,255,.3); }
+
+    .save-btn {
+      background: var(--gold);
+      color: var(--navy);
+      border: none;
+      border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 11px;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      width: 100%;
+      transition: background .15s, transform .1s;
+    }
+    .save-btn:hover  { background: var(--gold-lt); }
+    .save-btn:active { transform: scale(.98); }
+
+    .canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px;
+      background: var(--navy);
+    }
+    #diagram { background: white; box-shadow: 0 8px 48px rgba(0,0,0,.65); border-radius: 2px; cursor: default; }
+    #diagram.can-drag { cursor: ns-resize; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Potential Energy Diagram Generator</h1>
+  <span class="hint">Drag the horizontal level lines on the diagram to adjust values</span>
+</header>
+
+<div class="layout">
+  <div class="panel">
+
+    <!-- Energy Values -->
+    <div>
+      <div class="sec-title">Energy Values (kJ)</div>
+      <div style="display:flex;flex-direction:column;gap:11px;margin-top:8px">
+        <div class="ctrl">
+          <label>Reactants</label>
+          <div class="ctrl-row">
+            <input type="range"  id="rSlider"  min="0" max="1000" value="350">
+            <input type="number" id="rNum"     value="350" min="0" step="any">
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>Activated Complex</label>
+          <div class="ctrl-row">
+            <input type="range"  id="acSlider" min="0" max="1000" value="550">
+            <input type="number" id="acNum"    value="550" min="0" step="any">
+          </div>
+        </div>
+        <div class="ctrl">
+          <label>Products</label>
+          <div class="ctrl-row">
+            <input type="range"  id="pSlider"  min="0" max="1000" value="100">
+            <input type="number" id="pNum"     value="100" min="0" step="any">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Axis Settings -->
+    <div>
+      <div class="sec-title">Axis &amp; Font Settings</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:8px">
+        <div class="ctrl">
+          <label>Y-axis increment (kJ)</label>
+          <div class="ctrl-row">
+            <input type="range"  id="incSlider" min="5" max="500" value="50" step="5">
+            <input type="number" id="incNum"    value="50"  min="1" step="any">
+          </div>
+        </div>
+        <!-- FIX #6: font size control -->
+        <div class="ctrl">
+          <label>Label font size (px)</label>
+          <div class="ctrl-row">
+            <input type="range"  id="fsSlider" min="8" max="22" value="13">
+            <input type="number" id="fsNum"    value="13" min="6" max="30" step="1">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Labels -->
+    <div>
+      <div class="sec-title">Labels</div>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:8px">
+        <div class="ctrl">
+          <label>Reactant label</label>
+          <input type="text" id="reactantLabel" value="X+Y">
+        </div>
+        <div class="ctrl">
+          <label>Product label</label>
+          <input type="text" id="productLabel" value="Z">
+        </div>
+        <div class="ctrl">
+          <label>Activated complex label (optional)</label>
+          <input type="text" id="complexLabel" value="" placeholder="leave blank to hide">
+        </div>
+        <!-- FIX #2: editable arrow labels -->
+        <div class="ctrl">
+          <label>E<sub>a</sub> forward arrow label</label>
+          <input type="text" id="eaFwdLabel" value="Ea (fwd)">
+        </div>
+        <div class="ctrl">
+          <label>E<sub>a</sub> reverse arrow label</label>
+          <input type="text" id="eaRevLabel" value="Ea (rev)">
+        </div>
+        <div class="ctrl">
+          <label>ΔH arrow label</label>
+          <input type="text" id="dhLabel" value="ΔH">
+        </div>
+      </div>
+    </div>
+
+    <!-- Show / Hide -->
+    <div>
+      <div class="sec-title">Show / Hide</div>
+      <div class="tog-list" style="margin-top:8px">
+        <label class="tog">
+          <input type="checkbox" id="showRefLines" checked>
+          <span class="dot" style="background:#bbb"></span>Reference lines
+        </label>
+        <label class="tog">
+          <input type="checkbox" id="showEaFwd" checked>
+          <span class="dot" style="background:var(--blue)"></span>E<sub>a</sub> forward arrow
+        </label>
+        <label class="tog">
+          <input type="checkbox" id="showEaRev" checked>
+          <span class="dot" style="background:var(--purple)"></span>E<sub>a</sub> reverse arrow
+        </label>
+        <label class="tog">
+          <input type="checkbox" id="showDH" checked>
+          <span class="dot" style="background:var(--green)"></span>ΔH arrow
+        </label>
+        <!-- FIX #1: toggle for kJ values on arrows -->
+        <label class="tog">
+          <input type="checkbox" id="showArrowValues" checked>
+          <span class="dot" style="background:#aaa"></span>kJ values on arrows
+        </label>
+        <label class="tog">
+          <input type="checkbox" id="showAxisLabels" checked>
+          <span class="dot" style="background:#666"></span>Y-axis labels
+        </label>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div>
+      <div class="sec-title">Summary</div>
+      <div class="summary" id="summaryCard" style="margin-top:8px"></div>
+    </div>
+
+    <button class="save-btn" id="saveBtn">⬇&nbsp; Save Diagram as PNG</button>
+
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="diagram" width="730" height="535"></canvas>
+  </div>
+</div>
+
+<script>
+  var canvas = document.getElementById('diagram');
+  var ctx    = canvas.getContext('2d');
+
+  var S = {
+    reactant: 350, complex: 550, product: 100,
+    increment: 50,
+    fontSize: 13,
+    reactantLabel: 'X+Y', productLabel: 'Z', complexLabel: '',
+    // FIX #2: editable arrow labels
+    eaFwdLabel: 'Ea (fwd)', eaRevLabel: 'Ea (rev)', dhLabel: '\u0394H',
+    showRefLines: true, showEaFwd: true, showEaRev: true,
+    showDH: true,
+    showArrowValues: true,   // FIX #1
+    showAxisLabels: true
+  };
+
+  // Layout constants
+  var ML = 90, MR = 48, MT = 46, MB = 60;
+  var CW = canvas.width, CH = canvas.height;
+  var PW = CW - ML - MR, PH = CH - MT - MB;
+
+  function axisTop() {
+    var inc  = Math.max(S.increment, 1);
+    var maxV = Math.max(S.reactant, S.complex, S.product, inc);
+    return Math.ceil((maxV + inc * 1.6) / inc) * inc;
+  }
+
+  function cy(val)  { return MT + PH - (val / axisTop()) * PH; }
+  function cx(frac) { return ML + frac * PW; }
+
+  // FIX #3: corrected triangle direction so shaft connects to arrowhead base
+  // In canvas Y increases downward.
+  // pointUp=true  → tip is at (x,y), base is BELOW tip at y+hs (d=+1)
+  // pointUp=false → tip is at (x,y), base is ABOVE tip at y-hs (d=-1)
+  function triHead(x, y, pointUp, hs) {
+    var d = pointUp ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - hs * 0.44, y + d * hs);
+    ctx.lineTo(x + hs * 0.44, y + d * hs);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Double-headed arrow. top=min(ya,yb) in px, bot=max.
+  // Line runs from base of top arrowhead (top+hs) to base of bottom arrowhead (bot-hs).
+  function doubleArrow(x, ya, yb, color, hs) {
+    hs = hs || 8;
+    var top = Math.min(ya, yb), bot = Math.max(ya, yb);
+    if (bot - top < hs * 3) return;
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle = color;
+    ctx.lineWidth = 1.7;
+    // Shaft: between the two arrowhead bases
+    ctx.beginPath();
+    ctx.moveTo(x, top + hs);
+    ctx.lineTo(x, bot - hs);
+    ctx.stroke();
+    // Top arrowhead — tip at top, base below it at top+hs
+    triHead(x, top, true, hs);
+    // Bottom arrowhead — tip at bot, base above it at bot-hs
+    triHead(x, bot, false, hs);
+    ctx.restore();
+  }
+
+  function singleDown(x, yFrom, yTo, color) {
+    var hs = 5;
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, yFrom);
+    ctx.lineTo(x, yTo - hs); // stop at arrowhead base
+    ctx.stroke();
+    triHead(x, yTo, false, hs); // tip points down, base above it
+    ctx.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, CW, CH);
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, CW, CH);
+
+    var top = axisTop();
+    var yr  = cy(S.reactant);
+    var yc  = cy(S.complex);
+    var yp  = cy(S.product);
+    var fs  = S.fontSize;
+
+    // Reference lines
+    if (S.showRefLines) {
+      ctx.save();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 5]);
+      [yr, yc, yp].forEach(function(y) {
+        ctx.beginPath();
+        ctx.moveTo(ML, y); ctx.lineTo(CW - MR, y);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    // Reaction curve
+    // Flat reactant: cx(0) → cx(0.21)
+    // Rise (bezier): cx(0.21) → cx(0.50) [peak]
+    // Fall (bezier): cx(0.50) → cx(0.75)
+    // Flat product: cx(0.75) → cx(1.0)
+    ctx.save();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx(0), yr);
+    ctx.lineTo(cx(0.21), yr);
+    ctx.bezierCurveTo(cx(0.31), yr, cx(0.44), yc, cx(0.50), yc);
+    ctx.bezierCurveTo(cx(0.57), yc, cx(0.68), yp, cx(0.75), yp);
+    ctx.lineTo(cx(1.0), yp);
+    ctx.stroke();
+    ctx.restore();
+
+    // Y axis
+    ctx.save();
+    ctx.strokeStyle = ctx.fillStyle = '#111';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ML, CH - MB); ctx.lineTo(ML, MT - 20);
+    ctx.stroke();
+    triHead(ML, MT - 20, true, 9);
+
+    // X axis
+    ctx.beginPath();
+    ctx.moveTo(ML, CH - MB); ctx.lineTo(CW - MR + 16, CH - MB);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(CW - MR + 20, CH - MB);
+    ctx.lineTo(CW - MR + 11, CH - MB - 4.5);
+    ctx.lineTo(CW - MR + 11, CH - MB + 4.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Y-axis ticks + labels
+    ctx.save();
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.font = fs + 'px DM Sans, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#222';
+    var inc = Math.max(S.increment, 1);
+    for (var v = 0; v <= top; v += inc) {
+      var yv = cy(v);
+      if (yv < MT - 12) continue;
+      ctx.beginPath();
+      ctx.moveTo(ML - 6, yv); ctx.lineTo(ML, yv);
+      ctx.stroke();
+      if (S.showAxisLabels) {
+        ctx.fillText(v, ML - 10, yv + fs * 0.38);
+      }
+    }
+    ctx.restore();
+
+    // Axis title — Y
+    ctx.save();
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold ' + (fs + 0.5) + 'px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.translate(18, CH / 2 - MB / 4);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('Potential Energy (kJ)', 0, 0);
+    ctx.restore();
+
+    // Axis title — X
+    ctx.save();
+    ctx.fillStyle = '#111';
+    ctx.font = 'bold ' + (fs + 0.5) + 'px DM Sans, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Reaction Coordinate', ML + PW / 2, CH - 10);
+    ctx.restore();
+
+    // Species labels — reactant above flat section, pointer arrow down to line
+    ctx.save();
+    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
+    ctx.fillStyle = '#111';
+    ctx.textAlign = 'center';
+    var rxX = cx(0.10);
+    ctx.fillText(S.reactantLabel, rxX, yr - 11);
+    singleDown(rxX, yr - 9, yr - 1, '#111');
+
+    // FIX #5: product label sits ABOVE the product platform, not on it
+    ctx.textAlign = 'center';
+    ctx.fillText(S.productLabel, cx(0.87), yp - 14);
+
+    // Activated complex label (optional, above peak)
+    if (S.complexLabel) {
+      ctx.textAlign = 'center';
+      ctx.fillText(S.complexLabel, cx(0.50), yc - 10);
+    }
+    ctx.restore();
+
+    // ── Arrow positioning ──
+    // All arrows stay within flat curve regions (no crossing the curve).
+    // Positions are computed from measured text widths so labels never
+    // overlap a neighboring arrow line regardless of font size.
+
+    var pad = 7;   // px between arrow line and start of its label text
+    var gap = 14;  // px clearance between one arrow's label edge and the next arrow line
+
+    // Helper: returns the pixel width of the widest line in an arrow's label block
+    function arrowLblW(nameText, valueText) {
+      ctx.font = fs + 'px DM Sans, sans-serif';
+      var nw = ctx.measureText(nameText).width;
+      if (!S.showArrowValues || !valueText) return nw;
+      ctx.font = 'bold ' + (fs + 1) + 'px DM Sans, sans-serif';
+      var vw = ctx.measureText(valueText).width;
+      return Math.max(nw, vw);
+    }
+
+    var eaF  = Math.round(S.complex - S.reactant);
+    var eaR  = Math.round(S.complex - S.product);
+    var dH   = Math.round(S.product  - S.reactant);
+    var sign = dH >= 0 ? '+' : '';
+
+    // ── Reactant zone (cx(0) → cx(0.21)): Ea fwd, label to the RIGHT ──
+    // Arrow x chosen so label right-edge lands at cx(0.21) - gap
+    var eaFwdLblW = arrowLblW(S.eaFwdLabel, eaF + ' kJ');
+    var axF = cx(0.21) - gap - pad - eaFwdLblW;
+    axF = Math.max(axF, cx(0.01) + 4);   // clamp to left edge of zone
+
+    // ── Product zone (cx(0.75) → cx(1.0)): ΔH (label LEFT) + Ea rev (label RIGHT) ──
+    // Place ΔH near the right canvas edge, then put Ea rev far enough left
+    // that its label doesn't reach the ΔH line.
+    var dhLblW    = arrowLblW(S.dhLabel, sign + dH + ' kJ');
+    var eaRevLblW = arrowLblW(S.eaRevLabel, eaR + ' kJ');
+
+    // ΔH arrow: near right edge; label drawn rightAlign at axH-pad
+    var axH = CW - MR - 6;
+
+    // Ea rev label right-edge = axR + pad + eaRevLblW
+    // ΔH  label left-edge    = axH - pad - dhLblW
+    // Require: axR + pad + eaRevLblW + gap ≤ axH - pad - dhLblW
+    var axR = axH - pad - dhLblW - gap - eaRevLblW - pad;
+    axR = Math.max(axR, cx(0.76));   // clamp to left edge of product zone
+
+    // Ea Forward
+    if (S.showEaFwd) {
+      var midF = (yr + yc) / 2;
+      doubleArrow(axF, yr, yc, '#2172b8');
+      ctx.save();
+      ctx.fillStyle = '#2172b8';
+      ctx.textAlign = 'left';
+      ctx.font = fs + 'px DM Sans, sans-serif';
+      ctx.fillText(S.eaFwdLabel, axF + pad, midF - fs * 0.4);
+      if (S.showArrowValues) {
+        ctx.font = 'bold ' + (fs + 1) + 'px DM Sans, sans-serif';
+        ctx.fillText(eaF + ' kJ', axF + pad, midF + fs * 0.85);
+      }
+      ctx.restore();
+    }
+
+    // Ea Reverse
+    if (S.showEaRev) {
+      var midR = (yp + yc) / 2;
+      doubleArrow(axR, yp, yc, '#7d3ca8');
+      ctx.save();
+      ctx.fillStyle = '#7d3ca8';
+      ctx.textAlign = 'left';
+      ctx.font = fs + 'px DM Sans, sans-serif';
+      ctx.fillText(S.eaRevLabel, axR + pad, midR - fs * 0.4);
+      if (S.showArrowValues) {
+        ctx.font = 'bold ' + (fs + 1) + 'px DM Sans, sans-serif';
+        ctx.fillText(eaR + ' kJ', axR + pad, midR + fs * 0.85);
+      }
+      ctx.restore();
+    }
+
+    // ΔH
+    if (S.showDH && Math.abs(yr - yp) > 18) {
+      var midH = (yr + yp) / 2;
+      doubleArrow(axH, yr, yp, '#1e8c4e');
+      ctx.save();
+      ctx.fillStyle = '#1e8c4e';
+      ctx.textAlign = 'right';
+      ctx.font = fs + 'px DM Sans, sans-serif';
+      ctx.fillText(S.dhLabel, axH - pad, midH - fs * 0.4);
+      if (S.showArrowValues) {
+        ctx.font = 'bold ' + (fs + 1) + 'px DM Sans, sans-serif';
+        ctx.fillText(sign + dH + ' kJ', axH - pad, midH + fs * 0.85);
+      }
+      ctx.restore();
+    }
+
+    updateSummary();
+  }
+
+  function updateSummary() {
+    var eaF     = Math.round(S.complex - S.reactant);
+    var eaR     = Math.round(S.complex - S.product);
+    var dH      = Math.round(S.product - S.reactant);
+    var sign    = dH >= 0 ? '+' : '';
+    var rxnType  = dH < 0 ? 'exothermic' : dH > 0 ? 'endothermic' : 'thermoneutral';
+    var badgeCls = dH < 0 ? 'b-exo' : dH > 0 ? 'b-endo' : 'b-neut';
+    var valCls   = dH < 0 ? 's-neg' : dH > 0 ? 's-pos' : '';
+    document.getElementById('summaryCard').innerHTML =
+      '<div class="s-row"><span class="s-lbl">E\u2090 forward</span><span class="s-val">' + eaF + ' kJ</span></div>' +
+      '<div class="s-row"><span class="s-lbl">E\u2090 reverse</span><span class="s-val">' + eaR + ' kJ</span></div>' +
+      '<div class="s-row"><span class="s-lbl">\u0394H</span><span class="s-val ' + valCls + '">' + sign + dH + ' kJ</span></div>' +
+      '<div class="s-row" style="margin-top:3px"><span class="s-lbl">Reaction type</span>' +
+      '<span class="badge ' + badgeCls + '">' + rxnType + '</span></div>';
+  }
+
+  // Generic slider+number sync
+  function syncPair(slId, nmId, key) {
+    var sl = document.getElementById(slId);
+    var nm = document.getElementById(nmId);
+    sl.addEventListener('input', function() {
+      S[key] = parseFloat(sl.value);
+      nm.value = sl.value;
+      draw();
+    });
+    nm.addEventListener('input', function() {
+      var v = parseFloat(nm.value);
+      if (isNaN(v)) return;
+      S[key] = v;
+      var newMax = Math.max(v * 1.6, 1000);
+      sl.max = Math.ceil(newMax / 100) * 100;
+      sl.value = v;
+      draw();
+    });
+  }
+
+  syncPair('rSlider',   'rNum',   'reactant');
+  syncPair('acSlider',  'acNum',  'complex');
+  syncPair('pSlider',   'pNum',   'product');
+  syncPair('incSlider', 'incNum', 'increment');
+  syncPair('fsSlider',  'fsNum',  'fontSize');
+
+  // Text label inputs
+  document.getElementById('reactantLabel').addEventListener('input', function(e) { S.reactantLabel = e.target.value; draw(); });
+  document.getElementById('productLabel').addEventListener('input',  function(e) { S.productLabel  = e.target.value; draw(); });
+  document.getElementById('complexLabel').addEventListener('input',  function(e) { S.complexLabel  = e.target.value; draw(); });
+  document.getElementById('eaFwdLabel').addEventListener('input',   function(e) { S.eaFwdLabel    = e.target.value; draw(); });
+  document.getElementById('eaRevLabel').addEventListener('input',   function(e) { S.eaRevLabel    = e.target.value; draw(); });
+  document.getElementById('dhLabel').addEventListener('input',      function(e) { S.dhLabel       = e.target.value; draw(); });
+
+  // Checkboxes
+  ['showRefLines','showEaFwd','showEaRev','showDH','showArrowValues','showAxisLabels'].forEach(function(id) {
+    document.getElementById(id).addEventListener('change', function(e) { S[id] = e.target.checked; draw(); });
+  });
+
+  // ── Drag interaction ──
+  var dragging = null;
+
+  function nearLevel(my) {
+    var levels = [
+      { key: 'reactant', y: cy(S.reactant) },
+      { key: 'complex',  y: cy(S.complex)  },
+      { key: 'product',  y: cy(S.product)  }
+    ];
+    for (var i = 0; i < levels.length; i++) {
+      if (Math.abs(my - levels[i].y) < 12) return levels[i].key;
+    }
+    return null;
+  }
+
+  function mouseYtoVal(my) {
+    var raw = ((CH - MB - my) / PH) * axisTop();
+    return Math.max(0, Math.round(raw));
+  }
+
+  canvas.addEventListener('mousemove', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var my = (e.clientY - rect.top) * (CH / rect.height);
+    if (dragging) {
+      var v = mouseYtoVal(my);
+      S[dragging] = v;
+      var map = { reactant: ['rSlider','rNum'], complex: ['acSlider','acNum'], product: ['pSlider','pNum'] };
+      var ids = map[dragging];
+      var sl = document.getElementById(ids[0]);
+      sl.max = Math.max(parseFloat(sl.max), v * 1.2);
+      sl.value = v;
+      document.getElementById(ids[1]).value = v;
+      draw();
+    } else {
+      canvas.className = nearLevel(my) ? 'can-drag' : '';
+    }
+  });
+
+  canvas.addEventListener('mousedown', function(e) {
+    var rect = canvas.getBoundingClientRect();
+    var my = (e.clientY - rect.top) * (CH / rect.height);
+    dragging = nearLevel(my);
+  });
+
+  canvas.addEventListener('mouseup',    function() { dragging = null; });
+  canvas.addEventListener('mouseleave', function() { dragging = null; canvas.className = ''; });
+
+  // Save PNG
+  document.getElementById('saveBtn').addEventListener('click', function() {
+    var link = document.createElement('a');
+    link.download = 'potential-energy-diagram.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+
+  draw();
+</script>
+</body>
+</html>
