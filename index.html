@@ -316,6 +316,10 @@
           <span class="dot" style="background:#bbb"></span>Product kJ value on label
         </label>
         <label class="tog">
+          <input type="checkbox" id="showComplexValue">
+          <span class="dot" style="background:#bbb"></span>Activated complex kJ value on label
+        </label>
+        <label class="tog">
           <input type="checkbox" id="showAxisLabels" checked>
           <span class="dot" style="background:#666"></span>Y-axis labels
         </label>
@@ -352,6 +356,7 @@
     showArrowValues: true,
     showReactantValue: false,
     showProductValue: false,
+    showComplexValue: false,
     showAxisLabels: true,
     colorCurve:  '#111111',
     colorLabels: '#111111',
@@ -605,8 +610,12 @@
     ctx.fillText(prodDisplayStr, prodX, yp - 14);
 
     // Activated complex label (optional, above peak)
-    if (S.complexLabel) {
-      ctx.fillText(S.complexLabel, cx(0.50), yc - 10);
+    if (S.complexLabel || S.showComplexValue) {
+      var acDisplayStr = S.complexLabel || '';
+      if (S.showComplexValue) {
+        acDisplayStr = acDisplayStr ? acDisplayStr + ' = ' + S.complex + ' kJ' : '= ' + S.complex + ' kJ';
+      }
+      ctx.fillText(acDisplayStr, cx(0.50), yc - 10);
     }
     ctx.restore();
 
@@ -725,7 +734,7 @@
   });
 
   // Checkboxes
-  ['showRefLines','showEaFwd','showEaRev','showDH','showArrowValues','showReactantValue','showProductValue','showAxisLabels'].forEach(function(id) {
+  ['showRefLines','showEaFwd','showEaRev','showDH','showArrowValues','showReactantValue','showProductValue','showComplexValue','showAxisLabels'].forEach(function(id) {
     document.getElementById(id).addEventListener('change', function(e) { S[id] = e.target.checked; draw(); });
   });
 
