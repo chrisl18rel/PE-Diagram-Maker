@@ -60,7 +60,11 @@
       gap: 16px;
       /* no overflow: panel grows naturally; page scroll handles it */
     }
-    .sec-title {
+    .panel > div {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .panel > div:first-child { border-top: none; padding-top: 0; }
       font-size: 0.6rem;
       text-transform: uppercase;
       letter-spacing: 0.15em;
