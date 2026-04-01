@@ -744,11 +744,54 @@
     });
   }
 
-  syncPair('rSlider',   'rNum',   'reactant');
-  syncPair('acSlider',  'acNum',  'complex');
   syncPair('pSlider',   'pNum',   'product');
   syncPair('incSlider', 'incNum', 'increment');
   syncPair('fsSlider',  'fsNum',  'fontSize');
+
+  // Reactant — if raised above complex, push complex up with it
+  (function() {
+    var sl = document.getElementById('rSlider');
+    var nm = document.getElementById('rNum');
+    function setReactant(v) {
+      S.reactant = v;
+      if (S.complex < S.reactant) {
+        S.complex = S.reactant;
+        var acSl = document.getElementById('acSlider');
+        acSl.max = Math.max(parseFloat(acSl.max), S.complex * 1.2);
+        acSl.value = S.complex;
+        document.getElementById('acNum').value = S.complex;
+      }
+      sl.value = v; nm.value = v;
+      draw();
+    }
+    sl.addEventListener('input', function() { setReactant(parseFloat(sl.value)); });
+    nm.addEventListener('input', function() {
+      var v = parseFloat(nm.value);
+      if (isNaN(v)) return;
+      var newMax = Math.max(v * 1.6, 1000);
+      sl.max = Math.ceil(newMax / 100) * 100;
+      setReactant(v);
+    });
+  })();
+
+  // Activated complex — cannot go below reactant level
+  (function() {
+    var sl = document.getElementById('acSlider');
+    var nm = document.getElementById('acNum');
+    function setComplex(v) {
+      S.complex = Math.max(v, S.reactant);
+      sl.value = S.complex; nm.value = S.complex;
+      draw();
+    }
+    sl.addEventListener('input', function() { setComplex(parseFloat(sl.value)); });
+    nm.addEventListener('input', function() {
+      var v = parseFloat(nm.value);
+      if (isNaN(v)) return;
+      var newMax = Math.max(v * 1.6, 1000);
+      sl.max = Math.ceil(newMax / 100) * 100;
+      setComplex(v);
+    });
+  })();
 
   // Text label inputs
   document.getElementById('reactantLabel').addEventListener('input', function(e) { S.reactantLabel = e.target.value; draw(); });
@@ -807,6 +850,7 @@
     var my = (e.clientY - rect.top) * (CH / rect.height);
     if (dragging) {
       var v = mouseYtoVal(my);
+      if (dragging === 'complex') v = Math.max(v, S.reactant);
       S[dragging] = v;
       var map = { reactant: ['rSlider','rNum'], complex: ['acSlider','acNum'], product: ['pSlider','pNum'] };
       var ids = map[dragging];
