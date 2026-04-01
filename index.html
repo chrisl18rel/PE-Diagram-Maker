@@ -525,12 +525,15 @@
     ctx.fillText('Reaction Coordinate', ML + PW / 2, CH - 10);
     ctx.restore();
 
-    // ── Step 1: measure everything before drawing anything ──
+    // ── Positioning: species labels first, arrows derived from them ──
+    // Priority: species labels sit at their natural positions; arrow lines are
+    // pushed away from them. Arrow lines can never overlap species label text.
 
-    var pad = 7;   // px between an arrow line and the start of its label
-    var gap = 14;  // px clearance between a label's far edge and the next arrow line
+    var pad = 7;   // px between an arrow line and the start of its label text
+    var gap = 14;  // px clearance between neighboring arrow labels
+    var sGap = 28; // px clearance between a species label edge and the nearest arrow line
 
-    // Returns the pixel width of the widest line in an arrow label block
+    // Helper: width of the widest text line in an arrow label block
     function arrowLblW(nameText, valueText) {
       ctx.font = fs + 'px DM Sans, sans-serif';
       var nw = ctx.measureText(nameText).width;
@@ -545,42 +548,45 @@
     var dH   = Math.round(S.product  - S.reactant);
     var sign = dH >= 0 ? '+' : '';
 
-    // ── Compute arrow x positions ──
+    // Measure species display strings (may include kJ value)
+    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
+    var rxFullStr   = S.showReactantValue ? S.reactantLabel + ' = ' + S.reactant + ' kJ' : S.reactantLabel;
+    var prodFullStr = S.showProductValue  ? S.productLabel  + ' = ' + S.product  + ' kJ' : S.productLabel;
+    var rxLblHalfW   = ctx.measureText(rxFullStr).width / 2;
+    var prodLblHalfW = ctx.measureText(prodFullStr).width / 2;
 
-    // Ea fwd: label extends RIGHT from the arrow line; must clear cx(0.21)
+    // Measure arrow label widths
     var eaFwdLblW = arrowLblW(S.eaFwdLabel, eaF + ' kJ');
-    var axF = cx(0.21) - gap - pad - eaFwdLblW;
-    axF = Math.max(axF, cx(0.01) + 4);
+    var eaRevLblW = arrowLblW(S.eaRevLabel, eaR + ' kJ');
+    var dhLblW    = arrowLblW(S.dhLabel,    sign + dH + ' kJ');
 
-    // ΔH: anchored near right canvas edge, label extends LEFT
-    var dhLblW = arrowLblW(S.dhLabel, sign + dH + ' kJ');
+    // ── Step 1: Pin species labels at natural preferred positions ──
+
+    // Reactant: natural center at 8% across the plot; keep left edge on canvas
+    var rxX = cx(0.08);
+    rxX = Math.max(rxX, ML + rxLblHalfW + 4);
+
+    // Product: natural center at 79% across the plot; keep within product zone
+    var prodX = cx(0.79);
+    prodX = Math.max(prodX, cx(0.76) + prodLblHalfW + 4);
+
+    // ── Step 2: Derive arrow x positions so they clear species labels ──
+
+    // ΔH: anchored near right canvas edge, label draws LEFT
     var axH = CW - MR - 6;
 
-    // Ea rev: label extends RIGHT; must clear ΔH line
-    var eaRevLblW = arrowLblW(S.eaRevLabel, eaR + ' kJ');
-    var axR = axH - pad - dhLblW - gap - eaRevLblW - pad;
-    axR = Math.max(axR, cx(0.76));
+    // Ea rev: must clear (a) ΔH label and (b) right edge of product species label
+    var axR_fromDH      = axH - pad - dhLblW - gap - eaRevLblW - pad;
+    var axR_fromSpecies = prodX + prodLblHalfW + sGap;
+    var axR = Math.max(axR_fromDH, axR_fromSpecies);
+    // Hard clamp: don't let axR push past ΔH label's left edge
+    axR = Math.min(axR, axH - pad - dhLblW - gap);
 
-    // ── Step 2: position species labels using computed arrow positions ──
-
-    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
-
-    // Species labels need a larger gap from arrow lines than arrows need from each other
-    var speciesGap = 30;
-
-    // Reactant label: centered in flat reactant zone, right edge at least speciesGap left of axF
-    var rxLblHalfW = ctx.measureText(S.reactantLabel).width / 2;
-    var rxXmax = axF - speciesGap - rxLblHalfW;
-    var rxXmin = cx(0.01) + rxLblHalfW;
-    var rxX = Math.min(rxXmax, cx(0.10));
-    rxX = Math.max(rxX, rxXmin);
-
-    // Product label: centered in flat product zone, right edge at least speciesGap left of axR
-    var prodLblHalfW = ctx.measureText(S.productLabel).width / 2;
-    var prodXmax = axR - speciesGap - prodLblHalfW;
-    var prodXmin = cx(0.76) + prodLblHalfW;
-    var prodX = Math.min(prodXmax, cx(0.82));
-    prodX = Math.max(prodX, prodXmin);
+    // Ea fwd: must clear right edge of reactant species label.
+    // Preferred anchor: cx(0.21); push right if needed.
+    var axF = Math.max(cx(0.21), rxX + rxLblHalfW + sGap);
+    // Don't let it push past the midpoint of the diagram
+    axF = Math.min(axF, cx(0.40));
 
     // ── Step 3: draw species labels ──
 
@@ -589,28 +595,14 @@
     ctx.fillStyle = S.colorLabels;
     ctx.textAlign = 'center';
 
-    // Reactant label — shift up if value line is also shown
-    var rxValStr = '= ' + S.reactant + ' kJ';
-    if (S.showReactantValue) {
-      ctx.fillText(S.reactantLabel, rxX, yr - 11 - (fs + 3));
-      ctx.font = fs + 'px DM Sans, sans-serif';
-      ctx.fillText(rxValStr, rxX, yr - 11);
-      ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
-    } else {
-      ctx.fillText(S.reactantLabel, rxX, yr - 11);
-    }
+    // Reactant label — optionally append the kJ value on the same line
+    var rxDisplayStr = S.showReactantValue ? S.reactantLabel + ' = ' + S.reactant + ' kJ' : S.reactantLabel;
+    ctx.fillText(rxDisplayStr, rxX, yr - 11);
     singleDown(rxX, yr - 9, yr - 1, S.colorLabels);
 
-    // Product label — shift up if value line is also shown
-    var prodValStr = '= ' + S.product + ' kJ';
-    if (S.showProductValue) {
-      ctx.fillText(S.productLabel, prodX, yp - 14 - (fs + 3));
-      ctx.font = fs + 'px DM Sans, sans-serif';
-      ctx.fillText(prodValStr, prodX, yp - 14);
-      ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
-    } else {
-      ctx.fillText(S.productLabel, prodX, yp - 14);
-    }
+    // Product label — optionally append the kJ value on the same line
+    var prodDisplayStr = S.showProductValue ? S.productLabel + ' = ' + S.product + ' kJ' : S.productLabel;
+    ctx.fillText(prodDisplayStr, prodX, yp - 14);
 
     // Activated complex label (optional, above peak)
     if (S.complexLabel) {
