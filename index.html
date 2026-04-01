@@ -473,35 +473,12 @@
     ctx.fillText('Reaction Coordinate', ML + PW / 2, CH - 10);
     ctx.restore();
 
-    // Species labels — reactant above flat section, pointer arrow down to line
-    ctx.save();
-    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
-    ctx.fillStyle = '#111';
-    ctx.textAlign = 'center';
-    var rxX = cx(0.10);
-    ctx.fillText(S.reactantLabel, rxX, yr - 11);
-    singleDown(rxX, yr - 9, yr - 1, '#111');
+    // ── Step 1: measure everything before drawing anything ──
 
-    // FIX #5: product label sits ABOVE the product platform, not on it
-    ctx.textAlign = 'center';
-    ctx.fillText(S.productLabel, cx(0.87), yp - 14);
+    var pad = 7;   // px between an arrow line and the start of its label
+    var gap = 14;  // px clearance between a label's far edge and the next arrow line
 
-    // Activated complex label (optional, above peak)
-    if (S.complexLabel) {
-      ctx.textAlign = 'center';
-      ctx.fillText(S.complexLabel, cx(0.50), yc - 10);
-    }
-    ctx.restore();
-
-    // ── Arrow positioning ──
-    // All arrows stay within flat curve regions (no crossing the curve).
-    // Positions are computed from measured text widths so labels never
-    // overlap a neighboring arrow line regardless of font size.
-
-    var pad = 7;   // px between arrow line and start of its label text
-    var gap = 14;  // px clearance between one arrow's label edge and the next arrow line
-
-    // Helper: returns the pixel width of the widest line in an arrow's label block
+    // Returns the pixel width of the widest line in an arrow label block
     function arrowLblW(nameText, valueText) {
       ctx.font = fs + 'px DM Sans, sans-serif';
       var nw = ctx.measureText(nameText).width;
@@ -516,26 +493,61 @@
     var dH   = Math.round(S.product  - S.reactant);
     var sign = dH >= 0 ? '+' : '';
 
-    // ── Reactant zone (cx(0) → cx(0.21)): Ea fwd, label to the RIGHT ──
-    // Arrow x chosen so label right-edge lands at cx(0.21) - gap
+    // ── Compute arrow x positions ──
+
+    // Ea fwd: label extends RIGHT from the arrow line; must clear cx(0.21)
     var eaFwdLblW = arrowLblW(S.eaFwdLabel, eaF + ' kJ');
     var axF = cx(0.21) - gap - pad - eaFwdLblW;
-    axF = Math.max(axF, cx(0.01) + 4);   // clamp to left edge of zone
+    axF = Math.max(axF, cx(0.01) + 4);
 
-    // ── Product zone (cx(0.75) → cx(1.0)): ΔH (label LEFT) + Ea rev (label RIGHT) ──
-    // Place ΔH near the right canvas edge, then put Ea rev far enough left
-    // that its label doesn't reach the ΔH line.
-    var dhLblW    = arrowLblW(S.dhLabel, sign + dH + ' kJ');
-    var eaRevLblW = arrowLblW(S.eaRevLabel, eaR + ' kJ');
-
-    // ΔH arrow: near right edge; label drawn rightAlign at axH-pad
+    // ΔH: anchored near right canvas edge, label extends LEFT
+    var dhLblW = arrowLblW(S.dhLabel, sign + dH + ' kJ');
     var axH = CW - MR - 6;
 
-    // Ea rev label right-edge = axR + pad + eaRevLblW
-    // ΔH  label left-edge    = axH - pad - dhLblW
-    // Require: axR + pad + eaRevLblW + gap ≤ axH - pad - dhLblW
+    // Ea rev: label extends RIGHT; must clear ΔH line
+    var eaRevLblW = arrowLblW(S.eaRevLabel, eaR + ' kJ');
     var axR = axH - pad - dhLblW - gap - eaRevLblW - pad;
-    axR = Math.max(axR, cx(0.76));   // clamp to left edge of product zone
+    axR = Math.max(axR, cx(0.76));
+
+    // ── Step 2: position species labels using computed arrow positions ──
+
+    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
+
+    // Reactant label: centered somewhere in the flat reactant zone.
+    // Its right half must not reach axF.
+    var rxLblHalfW = ctx.measureText(S.reactantLabel).width / 2;
+    var rxXmax = axF - gap - rxLblHalfW;              // right edge stays gap px left of axF
+    var rxXmin = cx(0.01) + rxLblHalfW;               // left edge stays on canvas
+    var rxX = Math.min(rxXmax, cx(0.10));              // prefer cx(0.10), clamp if needed
+    rxX = Math.max(rxX, rxXmin);
+
+    // Product label: centered somewhere in the flat product zone.
+    // Its right half must not reach axR (leftmost product-zone arrow).
+    var prodLblHalfW = ctx.measureText(S.productLabel).width / 2;
+    var prodXmax = axR - gap - prodLblHalfW;           // right edge stays gap px left of axR
+    var prodXmin = cx(0.76) + prodLblHalfW;            // left edge stays in product zone
+    var prodX = Math.min(prodXmax, cx(0.87));          // prefer cx(0.87), clamp if needed
+    prodX = Math.max(prodX, prodXmin);
+
+    // ── Step 3: draw species labels ──
+
+    ctx.save();
+    ctx.font = 'bold ' + fs + 'px DM Sans, sans-serif';
+    ctx.fillStyle = '#111';
+    ctx.textAlign = 'center';
+
+    ctx.fillText(S.reactantLabel, rxX, yr - 11);
+    singleDown(rxX, yr - 9, yr - 1, '#111');
+
+    ctx.fillText(S.productLabel, prodX, yp - 14);
+
+    // Activated complex label (optional, above peak)
+    if (S.complexLabel) {
+      ctx.fillText(S.complexLabel, cx(0.50), yc - 10);
+    }
+    ctx.restore();
+
+    // ── Step 4: draw arrows ──
 
     // Ea Forward
     if (S.showEaFwd) {
