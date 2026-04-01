@@ -270,15 +270,42 @@
       </div>
     </div>
 
-    <!-- Colors -->
+    <!-- Appearance -->
     <div>
-      <div class="sec-title">Colors</div>
+      <div class="sec-title">Appearance</div>
       <div style="display:flex;flex-direction:column;gap:9px;margin-top:8px">
-        <div class="color-row"><span>Graph line</span>       <input type="color" id="colorCurve"  value="#111111"></div>
-        <div class="color-row"><span>All labels</span>       <input type="color" id="colorLabels" value="#111111"></div>
-        <div class="color-row"><span>E<sub>a</sub> forward</span> <input type="color" id="colorEaFwd" value="#2172b8"></div>
-        <div class="color-row"><span>E<sub>a</sub> reverse</span> <input type="color" id="colorEaRev" value="#7d3ca8"></div>
-        <div class="color-row"><span>ΔH</span>               <input type="color" id="colorDH"     value="#1e8c4e"></div>
+        <!-- Column headers -->
+        <div style="display:flex;justify-content:flex-end;gap:8px;padding-right:2px">
+          <span style="font-size:0.62rem;color:var(--text-dim);width:32px;text-align:center">Color</span>
+          <span style="font-size:0.62rem;color:var(--text-dim);width:52px;text-align:center">Width</span>
+        </div>
+        <div class="color-row"><span>Graph line</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color"  id="colorCurve" value="#111111">
+            <input type="number" id="lwCurve"    value="3"   min="0.5" max="12" step="0.5">
+          </div>
+        </div>
+        <div class="color-row"><span>All labels</span>
+          <input type="color" id="colorLabels" value="#111111">
+        </div>
+        <div class="color-row"><span>E<sub>a</sub> forward</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color"  id="colorEaFwd" value="#2172b8">
+            <input type="number" id="lwEaFwd"    value="1.7" min="0.5" max="12" step="0.5">
+          </div>
+        </div>
+        <div class="color-row"><span>E<sub>a</sub> reverse</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color"  id="colorEaRev" value="#7d3ca8">
+            <input type="number" id="lwEaRev"    value="1.7" min="0.5" max="12" step="0.5">
+          </div>
+        </div>
+        <div class="color-row"><span>ΔH</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input type="color"  id="colorDH" value="#1e8c4e">
+            <input type="number" id="lwDH"    value="1.7" min="0.5" max="12" step="0.5">
+          </div>
+        </div>
       </div>
     </div>
 
@@ -362,7 +389,11 @@
     colorLabels: '#111111',
     colorEaFwd:  '#2172b8',
     colorEaRev:  '#7d3ca8',
-    colorDH:     '#1e8c4e'
+    colorDH:     '#1e8c4e',
+    lwCurve:  3,
+    lwEaFwd:  1.7,
+    lwEaRev:  1.7,
+    lwDH:     1.7
   };
 
   // Layout constants
@@ -395,13 +426,14 @@
 
   // Double-headed arrow. top=min(ya,yb) in px, bot=max.
   // Line runs from base of top arrowhead (top+hs) to base of bottom arrowhead (bot-hs).
-  function doubleArrow(x, ya, yb, color, hs) {
+  function doubleArrow(x, ya, yb, color, hs, lw) {
     hs = hs || 8;
+    lw = lw || 1.7;
     var top = Math.min(ya, yb), bot = Math.max(ya, yb);
     if (bot - top < hs * 3) return;
     ctx.save();
     ctx.strokeStyle = ctx.fillStyle = color;
-    ctx.lineWidth = 1.7;
+    ctx.lineWidth = lw;
     // Shaft: between the two arrowhead bases
     ctx.beginPath();
     ctx.moveTo(x, top + hs);
@@ -460,7 +492,7 @@
     // Flat product: cx(0.75) → cx(1.0)
     ctx.save();
     ctx.strokeStyle = S.colorCurve;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = S.lwCurve;
     ctx.lineJoin = ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(cx(0), yr);
@@ -624,7 +656,7 @@
     // Ea Forward
     if (S.showEaFwd) {
       var midF = (yr + yc) / 2;
-      doubleArrow(axF, yr, yc, S.colorEaFwd);
+      doubleArrow(axF, yr, yc, S.colorEaFwd, 8, S.lwEaFwd);
       ctx.save();
       ctx.fillStyle = S.colorEaFwd;
       ctx.textAlign = 'left';
@@ -640,7 +672,7 @@
     // Ea Reverse
     if (S.showEaRev) {
       var midR = (yp + yc) / 2;
-      doubleArrow(axR, yp, yc, S.colorEaRev);
+      doubleArrow(axR, yp, yc, S.colorEaRev, 8, S.lwEaRev);
       ctx.save();
       ctx.fillStyle = S.colorEaRev;
       ctx.textAlign = 'left';
@@ -656,7 +688,7 @@
     // ΔH
     if (S.showDH && Math.abs(yr - yp) > 18) {
       var midH = (yr + yp) / 2;
-      doubleArrow(axH, yr, yp, S.colorDH);
+      doubleArrow(axH, yr, yp, S.colorDH, 8, S.lwDH);
       ctx.save();
       ctx.fillStyle = S.colorDH;
       ctx.textAlign = 'right';
@@ -721,6 +753,14 @@
   document.getElementById('eaFwdLabel').addEventListener('input',   function(e) { S.eaFwdLabel    = e.target.value; draw(); });
   document.getElementById('eaRevLabel').addEventListener('input',   function(e) { S.eaRevLabel    = e.target.value; draw(); });
   document.getElementById('dhLabel').addEventListener('input',      function(e) { S.dhLabel       = e.target.value; draw(); });
+
+  // Line width inputs
+  ['lwCurve','lwEaFwd','lwEaRev','lwDH'].forEach(function(id) {
+    document.getElementById(id).addEventListener('input', function(e) {
+      var v = parseFloat(e.target.value);
+      if (!isNaN(v) && v > 0) { S[id] = v; draw(); }
+    });
+  });
 
   // Color pickers — also keep the Show/Hide dots in sync
   ['colorCurve','colorLabels','colorEaFwd','colorEaRev','colorDH'].forEach(function(id) {
