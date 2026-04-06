@@ -163,6 +163,12 @@
     }
     .save-btn:hover  { background: var(--gold-lt); }
     .save-btn:active { transform: scale(.98); }
+    .save-btn:disabled {
+      background: #3a4a5a;
+      color: #6e90a8;
+      cursor: not-allowed;
+      transform: none;
+    }
 
     .canvas-wrap {
       flex: 1;
@@ -364,6 +370,9 @@
     </div>
 
     <button class="save-btn" id="saveBtn">⬇&nbsp; Save Diagram as PNG</button>
+    <div id="complexWarning" style="display:none;margin-top:8px;padding:8px 10px;background:rgba(235,87,87,.12);border:1px solid rgba(235,87,87,.35);border-radius:5px;font-size:0.72rem;color:#eb5757;line-height:1.4;">
+      ⚠ Activated complex must be higher than the reactants. Saving is disabled until this is corrected.
+    </div>
 
   </div>
 
@@ -748,21 +757,24 @@
   syncPair('incSlider', 'incNum', 'increment');
   syncPair('fsSlider',  'fsNum',  'fontSize');
 
-  // Reactant — if raised above complex, push complex up with it
+  // Validation: warn and disable save if complex < reactant
+  function validate() {
+    var invalid = S.complex < S.reactant;
+    var warning = document.getElementById('complexWarning');
+    var saveBtn = document.getElementById('saveBtn');
+    warning.style.display = invalid ? 'block' : 'none';
+    saveBtn.disabled = invalid;
+  }
+
+  // Reactant — update state and revalidate (no longer forces complex up)
   (function() {
     var sl = document.getElementById('rSlider');
     var nm = document.getElementById('rNum');
     function setReactant(v) {
       S.reactant = v;
-      if (S.complex < S.reactant) {
-        S.complex = S.reactant;
-        var acSl = document.getElementById('acSlider');
-        acSl.max = Math.max(parseFloat(acSl.max), S.complex * 1.2);
-        acSl.value = S.complex;
-        document.getElementById('acNum').value = S.complex;
-      }
       sl.value = v; nm.value = v;
       draw();
+      validate();
     }
     sl.addEventListener('input', function() { setReactant(parseFloat(sl.value)); });
     nm.addEventListener('input', function() {
@@ -774,22 +786,26 @@
     });
   })();
 
-  // Activated complex — cannot go below reactant level
+  // Activated complex — free typing allowed; validates without clamping
   (function() {
     var sl = document.getElementById('acSlider');
     var nm = document.getElementById('acNum');
-    function setComplex(v) {
-      S.complex = Math.max(v, S.reactant);
-      sl.value = S.complex; nm.value = S.complex;
-      draw();
-    }
-    sl.addEventListener('input', function() { setComplex(parseFloat(sl.value)); });
+    // Slider still clamps to reactant minimum so dragging it feels sensible
+    sl.addEventListener('input', function() {
+      var v = Math.max(parseFloat(sl.value), S.reactant);
+      S.complex = v;
+      sl.value = v; nm.value = v;
+      draw(); validate();
+    });
+    // Number input: accept whatever the user types, just validate
     nm.addEventListener('input', function() {
       var v = parseFloat(nm.value);
       if (isNaN(v)) return;
+      S.complex = v;
       var newMax = Math.max(v * 1.6, 1000);
       sl.max = Math.ceil(newMax / 100) * 100;
-      setComplex(v);
+      sl.value = Math.max(v, 0);
+      draw(); validate();
     });
   })();
 
@@ -859,6 +875,7 @@
       sl.value = v;
       document.getElementById(ids[1]).value = v;
       draw();
+      validate();
     } else {
       canvas.className = nearLevel(my) ? 'can-drag' : '';
     }
@@ -882,6 +899,7 @@
   });
 
   draw();
+  validate();
 </script>
 </body>
 </html>
